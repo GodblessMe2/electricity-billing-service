@@ -34,12 +34,17 @@ $ npm run test:e2e
 $ npm run test:cov
 ```
 
-## Event design
+# Event design
 
-# Publisher:
+## Publisher:
 
 When a new bill is created (bill_created), it is published to the RabbitMQ message queue.
+
 Upon successful payment (payment_completed), the event is published to the queue.
+
+## Subscriber
+
+NotificationService listens to the message queue and handles different events
 
 ## Support
 
