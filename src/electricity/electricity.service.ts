@@ -41,38 +41,44 @@ export class ElectricityService implements OnModuleDestroy, OnModuleInit {
     }
   }
 
-  createBill(amount: number): Bill {
+  async createBill(amount: number): Promise<Bill> {
     const bill = new Bill(amount);
     this.bills.push(bill);
-
-    this.client.emit('bill_created', bill);
+    await this.client.send('bill_created', bill);
+    console.log('Bill created and sent:', bill);
     return bill;
   }
 
-  payBill(validationRef: string, walletId: string): Bill {
-    const bill = this.bills.find((el) => el.id === validationRef);
-    if (!bill) {
-      throw new CustomError(404, 'The bill ID provided does not exist.');
+  async payBill(validationRef: string, walletId: string): Promise<Bill | null> {
+    try {
+      const bill = this.bills.find((el) => el.id === validationRef);
+      if (!bill) {
+        throw new CustomError(404, 'The bill ID provided does not exist.');
+      }
+
+      if (bill.status !== 'Pending') {
+        throw new CustomError(400, 'Bill payment error');
+      }
+
+      const wallet = this.walletService.getWalletById(walletId);
+      if (!wallet) {
+        console.error('Wallet not found');
+        throw new CustomError(404, 'The wallet ID provided does not exist.');
+      }
+
+      if (wallet.balance < bill.amount) {
+        throw new CustomError(400, 'Insufficient funds');
+      }
+
+      wallet.balance -= bill.amount;
+      bill.status = 'Paid';
+      await this.client.send('payment_completed', bill);
+      console.log('Payment completed and sent:', bill);
+      return bill;
+    } catch (error) {
+      console.error(error.message);
+      throw new CustomError(500, `Payment failed: ${error.message}`);
     }
-
-    if (bill.status !== 'Pending') {
-      throw new CustomError(400, 'Bill payment error');
-    }
-
-    const wallet = this.walletService.getWalletById(walletId);
-    if (!wallet) {
-      throw new CustomError(404, 'The wallet ID provided does not exist.');
-    }
-
-    if (wallet.balance < bill.amount) {
-      throw new CustomError(400, 'Insufficient funds');
-    }
-
-    wallet.balance -= bill.amount;
-    bill.status = 'Paid';
-
-    this.client.emit('payment_completed', bill);
-    return bill;
   }
 
   async onModuleDestroy() {

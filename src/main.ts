@@ -16,12 +16,12 @@ async function bootstrap() {
       urls: [rabbitMqUrl],
       queue: 'message',
       queueOptions: { durable: true },
+      prefetchCount: 1,
     },
   });
 
-  await app.listen(3000);
   await app.startAllMicroservices();
-
+  await app.listen(3000);
   console.log('HTTP Server is running on http://localhost:3000');
   console.log('RabbitMQ Subscriber Service is listening...');
 }
